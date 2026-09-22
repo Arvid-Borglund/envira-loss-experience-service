@@ -54,16 +54,18 @@ Both loss-experience endpoints take the optional query filters
     curl "http://localhost:8000/portfolios/PF-03/loss-experience?underwriting_year=2023&region=Sjaelland"
     curl "http://localhost:8000/portfolios/loss-experience?asset_type=residential"
 
-Example single-portfolio response (one peril shown):
+Example single-portfolio response (two of the five perils shown):
 
-<!-- TODO real numbers -->
     {"portfolio_id": "PF-03",
      "filters": {"underwriting_year": null, "region": null, "asset_type": null},
-     "perils": [{"peril": "fire", "policy_count": 190, "earned_premium_dkk": 1234567.89,
-                 "incurred_loss_dkk": 234567.89, "loss_ratio": 0.19, "claim_count": 45,
-                 "largest_claim_dkk": 98765.43}],
-     "total": {"policy_count": 950, "earned_premium_dkk": 5000000.0, "incurred_loss_dkk": 10000000.0,
-               "loss_ratio": 2.0, "claim_count": 300, "largest_claim_dkk": 285819.83}}
+     "perils": [{"peril": "fire", "policy_count": 178, "earned_premium_dkk": 624274.41,
+                 "incurred_loss_dkk": 1964755.03, "loss_ratio": 3.1473, "claim_count": 26,
+                 "largest_claim_dkk": 455259.37},
+                {"peril": "flood", "policy_count": 195, "earned_premium_dkk": 2551695.0,
+                 "incurred_loss_dkk": 2037577.96, "loss_ratio": 0.7985, "claim_count": 129,
+                 "largest_claim_dkk": 129320.56}],
+     "total": {"policy_count": 958, "earned_premium_dkk": 6586893.07, "incurred_loss_dkk": 6014775.35,
+               "loss_ratio": 0.9131, "claim_count": 322, "largest_claim_dkk": 455259.37}}
 
 ## Definitions
 
