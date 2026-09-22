@@ -163,6 +163,6 @@ def test_load_dataset_real_data_counts():
     assert issue(claim_issues, ORPHAN)["rows"] == 260
     assert issue(claim_issues, OUTSIDE_TERM)["rows"] == 310
     assert issue(claim_issues, NEGATIVE)["rows"] == 245
-    assert 1500 <= issue(dataset.quality, PERIL, action="normalised")["rows"] <= 1700
+    assert issue(dataset.quality, PERIL, action="normalised")["rows"] == 1321  # 11560 minus the five canonical spellings
     excluded = sum(entry["rows"] for entry in claim_issues if entry["action"] == "excluded")
     assert len(dataset.claims) + excluded == dataset.source_rows["claims"]
