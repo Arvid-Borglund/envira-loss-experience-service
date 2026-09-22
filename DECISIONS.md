@@ -1,9 +1,9 @@
 Started: 2026-09-22 15:02 CEST
-Stopped: TBD
+Stopped: 2026-09-22 16:18 CEST
 
 ## What I built
 
-- Backlog items 1 to 7: the single-portfolio endpoint, the comparison of all portfolios ranked by loss ratio, a data-quality endpoint, filters by underwriting year, region and asset type, a page, a Dockerfile with compose and 45 tests, plus a standard-library verifier and a two-job CI. Everything is loaded, cleaned and kept in memory at startup, in 0.15 s.
+- Backlog items 1 to 7: the single-portfolio endpoint, the comparison of all portfolios ranked by loss ratio, a data-quality endpoint, filters by underwriting year, region and asset type, a page, a Dockerfile with compose and 46 tests, plus a standard-library verifier and a two-job CI. Everything is loaded, cleaned and kept in memory at startup, in 0.15 s.
 - Started from the scaffold of my previous two-hour case (pyproject, CLAUDE.md layout, Dockerfile, CI workflow, test layout), as the brief allows. All business logic is new.
 - The data problems that change the answer, each applied once in data.py, counted and served at /data-quality: 25 spellings of the five perils normalised (1321 rows); claim dates in two formats, ISO and DD-MM-YYYY (day-first verified: 343 rows have a day above 12, and reported >= loss holds for every row after parsing); 260 orphan claims against policy ids that do not exist, excluded; 310 claims whose loss date precedes their policy's inception, excluded, 83 of which have another term of the same asset and peril covering the loss; 245 negative paid amounts, excluded; 667 settled claims still carrying a reserve, kept with the reserve ignored (2.1 M DKK); claim and policy currency differ for 748 claims, each amount converted with its own currency.
 - Currency: premiums at the inception month's rate, claims at the loss month's; a missing rate excludes and counts the row (none missing here). Ranking: loss ratio descending, then incurred loss. Claim counts include declined and withdrawn claims, which cost nothing; policy counts count terms.
