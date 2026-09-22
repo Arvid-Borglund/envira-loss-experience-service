@@ -34,6 +34,8 @@
   .error { margin-top: 20px; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 8px; background: var(--bad-bg); color: var(--bad); }
   details summary { cursor: pointer; color: var(--accent); text-decoration: underline; font-weight: 600; }
   details table { margin-top: 12px; }
+  #quality-body td:first-child { white-space: nowrap; }
+  #quality-body td:nth-child(6) { min-width: 28rem; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -75,7 +77,7 @@
   const nf = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
   const ratio = (v) => (v == null ? "n/a" : Number(v).toFixed(2));
   const money = (v) => ({ text: v == null ? "n/a" : nf.format(v), cls: "num" });
-  const count = (v) => ({ text: v == null ? "n/a" : String(v), cls: "num" });
+  const count = (v) => ({ text: v == null ? "n/a" : nf.format(v), cls: "num" });
   const ratioCell = (v) => ({ text: ratio(v), cls: "num" + (v > 1 ? " warn" : "") });
 
   function tr(cells, cls) {
