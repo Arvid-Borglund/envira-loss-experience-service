@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loss experience</title>
+<style>
+  :root { --ink: #1f2933; --muted: #616e7c; --line: #d9dee3; --accent: #1f5fa8; --bad: #a32020; --bad-bg: #fbeaea; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px; color: var(--ink); background: #f7f8fa;
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  p.lead, small { color: var(--muted); }
+  p.lead { margin: 0 0 20px; font-size: .9rem; }
+  .card { margin-top: 20px; padding: 16px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  label { display: flex; flex-direction: column; font-size: .85rem; color: var(--muted); flex: 1 1 140px; }
+  select { margin-top: 2px; padding: 8px 10px; font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 0 0 6px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: .8rem; white-space: nowrap; }
+  .num, #ranking td, #perils td { white-space: nowrap; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .warn { color: var(--bad); font-weight: 600; }
+  .worst { background: var(--bad-bg); }
+  tbody tr.pick { cursor: pointer; }
+  tbody tr.pick:hover { background: #eef3fa; }
+  tbody tr.selected td { font-weight: 600; }
+  tfoot td { font-weight: 600; border-top: 2px solid var(--ink); }
+  .error { margin-top: 20px; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 8px; background: var(--bad-bg); color: var(--bad); }
+  details summary { cursor: pointer; color: var(--accent); text-decoration: underline; font-weight: 600; }
+  details table { margin-top: 12px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Loss experience</h1>
+  <p class="lead">Loss ratio = incurred loss / earned premium. Incurred loss is what was paid for settled claims and paid plus reserve for open ones; withdrawn and declined claims cost nothing. Earned premium is the full annual premium. All figures in DKK.</p>
+  <div id="error" class="error" role="alert" hidden></div>
+  <section class="card">
+    <h2>All portfolios</h2>
+    <div class="scroll"><table id="ranking">
+      <caption id="ranking-note"></caption>
+      <thead><tr><th>Rank</th><th>Portfolio</th><th class="num">Loss ratio</th><th class="num">Incurred DKK</th><th class="num">Premium DKK</th><th class="num">Claims</th><th>Worst peril</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>One portfolio, per peril</h2>
+    <div class="filters">
+      <label>Portfolio <select id="portfolio"></select></label>
+      <label>Underwriting year <select id="underwriting_year"><option value="">all</option><option>2022</option><option>2023</option><option>2024</option></select></label>
+      <label>Region <select id="region"><option value="">all</option><option>Hovedstaden</option><option>Midtjylland</option><option>Nordjylland</option><option>Sjaelland</option><option>Syddanmark</option></select></label>
+      <label>Asset type <select id="asset_type"><option value="">all</option><option>agricultural</option><option>commercial</option><option>industrial</option><option>public</option><option>residential</option></select></label>
+    </div>
+    <div class="scroll" id="perils-wrap" hidden><table id="perils">
+      <thead><tr><th>Peril</th><th class="num">Policies</th><th class="num">Earned premium</th><th class="num">Incurred loss</th><th class="num">Loss ratio</th><th class="num">Claims</th><th class="num">Largest claim</th></tr></thead>
+      <tbody></tbody><tfoot></tfoot>
+    </table></div>
+  </section>
+  <section class="card">
+    <details id="quality"><summary>Data quality report</summary><div id="quality-body" class="scroll"></div></details>
+  </section>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const FILTERS = ["underwriting_year", "region", "asset_type"];
+  const controls = { portfolio: $("portfolio") };
+  for (const k of FILTERS) controls[k] = $(k);
+  const nf = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
+  const ratio = (v) => (v == null ? "n/a" : Number(v).toFixed(2));
+  const money = (v) => ({ text: v == null ? "n/a" : nf.format(v), cls: "num" });
+  const count = (v) => ({ text: v == null ? "n/a" : String(v), cls: "num" });
+  const ratioCell = (v) => ({ text: ratio(v), cls: "num" + (v > 1 ? " warn" : "") });
+
+  function tr(cells, cls) {
+    const row = document.createElement("tr");
+    if (cls) row.className = cls;
+    for (const c of cells) {
+      const td = document.createElement("td");
+      td.textContent = c && c.cls !== undefined ? c.text : c;
+      if (c && c.cls) td.className = c.cls;
+      row.appendChild(td);
+    }
+    return row;
+  }
+  function showError(message) { $("error").textContent = message; $("error").hidden = false; }
+  function clearError() { $("error").hidden = true; }
+
+  async function getJson(url) {
+    let response;
+    try { response = await fetch(url, { headers: { Accept: "application/json" } }); }
+    catch (e) { throw new Error("Could not reach the service"); }
+    let body = null;
+    try { body = await response.json(); } catch (e) { body = null; }
+    if (response.ok) return body;
+    const detail = body && body.detail !== undefined ? (typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail)) : "";
+    throw new Error("Error " + response.status + (detail ? ": " + detail : ""));
+  }
+
+  function setSelect(el, value) {
+    if (![...el.options].some((o) => o.value === value)) el.add(new Option(value, value));
+    el.value = value;
+  }
+  function syncUrl() {
+    const url = new URL(location);
+    for (const [k, el] of Object.entries(controls)) el.value ? url.searchParams.set(k, el.value) : url.searchParams.delete(k);
+    history.replaceState(null, "", url);
+  }
+
+  function renderRanking(data) {
+    $("ranking-note").textContent = data.ranking || "";
+    const body = $("ranking").tBodies[0];
+    body.textContent = "";
+    for (const [i, p] of data.portfolios.entries()) {
+      controls.portfolio.add(new Option(p.portfolio_id + "  (loss ratio " + ratio(p.loss_ratio) + ")", p.portfolio_id));
+      const wp = p.worst_peril ? p.worst_peril.peril + " (" + ratio(p.worst_peril.loss_ratio) + ")" : "n/a";
+      const row = tr([count(p.rank), p.portfolio_id, ratioCell(p.loss_ratio), money(p.incurred_loss_dkk), money(p.earned_premium_dkk), count(p.claim_count), wp], "pick" + (i < 3 ? " worst" : ""));
+      row.dataset.id = p.portfolio_id;
+      row.addEventListener("click", () => { setSelect(controls.portfolio, p.portfolio_id); loadPortfolio(); });
+      body.appendChild(row);
+    }
+  }
+
+  function renderPerils(data) {
+    const table = $("perils");
+    table.tBodies[0].textContent = "";
+    table.tFoot.textContent = "";
+    const cells = (name, g) => [name, count(g.policy_count), money(g.earned_premium_dkk), money(g.incurred_loss_dkk), ratioCell(g.loss_ratio), count(g.claim_count), money(g.largest_claim_dkk)];
+    for (const g of data.perils) table.tBodies[0].appendChild(tr(cells(g.peril, g)));
+    if (data.total) table.tFoot.appendChild(tr(cells("Total", data.total)));
+    for (const row of $("ranking").tBodies[0].rows) row.classList.toggle("selected", row.dataset.id === data.portfolio_id);
+    $("perils-wrap").hidden = false;
+  }
+
+  async function loadPortfolio() {
+    syncUrl();
+    const id = controls.portfolio.value;
+    if (!id) return;
+    const q = new URLSearchParams();
+    for (const k of FILTERS) if (controls[k].value) q.set(k, controls[k].value);
+    try {
+      renderPerils(await getJson("/portfolios/" + encodeURIComponent(id) + "/loss-experience" + (q.size ? "?" + q : "")));
+      clearError();
+    } catch (e) {
+      $("perils-wrap").hidden = true;
+      showError(e.message);
+    }
+  }
+
+  async function loadQuality() {
+    const box = $("quality-body");
+    if (box.dataset.loaded) return;
+    try {
+      const d = await getJson("/data-quality");
+      box.dataset.loaded = "1";
+      const counts = document.createElement("table");
+      counts.innerHTML = "<thead><tr><th>Table</th><th class='num'>Source rows</th><th class='num'>Used rows</th></tr></thead><tbody></tbody>";
+      for (const t of new Set([...Object.keys(d.source_rows || {}), ...Object.keys(d.used_rows || {})])) counts.tBodies[0].appendChild(tr([t, count(d.source_rows[t]), count(d.used_rows[t])]));
+      const issues = document.createElement("table");
+      issues.innerHTML = "<thead><tr><th>Rule</th><th>Table</th><th class='num'>Rows</th><th class='num'>Amount DKK</th><th>Action</th><th>Detail</th></tr></thead><tbody></tbody>";
+      for (const i of d.issues || []) issues.tBodies[0].appendChild(tr([i.rule, i.table, count(i.rows), money(i.amount_dkk), i.action, i.detail]));
+      if (!(d.issues || []).length) issues.tBodies[0].appendChild(tr(["No issues recorded.", "", "", "", "", ""]));
+      box.textContent = "";
+      box.append(counts, issues);
+      clearError();
+    } catch (e) { showError(e.message); }
+  }
+
+  for (const el of Object.values(controls)) el.addEventListener("change", loadPortfolio);
+  $("quality").addEventListener("toggle", () => { if ($("quality").open) loadQuality(); });
+
+  (async function init() {
+    const params = new URLSearchParams(location.search);
+    for (const k of FILTERS) if (params.get(k)) setSelect(controls[k], params.get(k));
+    try { renderRanking(await getJson("/portfolios/loss-experience")); }
+    catch (e) { showError(e.message); }
+    const wanted = params.get("portfolio") || (controls.portfolio.options[0] ? controls.portfolio.options[0].value : "");
+    if (wanted) { setSelect(controls.portfolio, wanted); loadPortfolio(); }
+  })();
+</script>
+</body>
+</html>
