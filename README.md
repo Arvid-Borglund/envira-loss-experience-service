@@ -33,6 +33,11 @@ or, with compose (same image, port and mount, plus a healthcheck on `/health`):
 
     docker compose up --build
 
+Compose bind-mounts `./data` into the container. If your Docker engine runs inside
+WSL without Docker Desktop, give it the engine-side path instead:
+
+    DATA_DIR=/mnt/c/path/to/this/repo/data docker compose up --build
+
 ## Endpoints
 
 | Method and path | What it returns |

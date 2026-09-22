@@ -4,7 +4,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - "./data:/app/data:ro"
+      - type: bind
+        source: ${DATA_DIR:-./data}  # engine-side path; see README for a WSL engine
+        target: /app/data
+        read_only: true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
