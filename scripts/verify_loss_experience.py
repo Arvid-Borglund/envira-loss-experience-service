@@ -100,8 +100,8 @@ def load():
         if policy is None:
             counts["orphan_claims"] += 1
             continue
-        loss, reported = parse_date(c["loss_date"]), parse_date(c["reported_date"])
-        if loss is None or reported is None:
+        loss = parse_date(c["loss_date"])  # reported_date feeds no figure, so it never excludes
+        if loss is None:
             counts["claims_unparseable_date"] += 1
             continue
         if not policy["inception"] <= loss <= policy["expiry"]:

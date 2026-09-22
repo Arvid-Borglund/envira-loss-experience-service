@@ -109,6 +109,14 @@ def test_clean_claims_keeps_loss_on_term_boundaries(policies):
     assert len(claims_from(policies, on_inception, on_expiry)[0]) == 2
 
 
+def test_clean_claims_keeps_claim_with_unparseable_reported_date(policies):
+    # reported_date feeds no figure, so a garbage value must not cost the claim its place in the totals
+    clean, issues = claims_from(policies, raw_claim(reported_date="garbage"), raw_claim(claim_id="C-2", loss_date="garbage"))
+    assert clean["claim_id"].tolist() == ["C-1"]
+    assert pd.isna(clean["reported_date"].iloc[0])
+    assert issue(issues, ("unparseable", "date"))["rows"] == 1
+
+
 def test_clean_claims_excludes_negative_paid(policies):
     clean, issues = claims_from(policies, raw_claim(), raw_claim(claim_id="C-2", paid_amount=-5.0))
     assert clean["claim_id"].tolist() == ["C-1"]

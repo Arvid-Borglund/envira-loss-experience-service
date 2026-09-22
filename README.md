@@ -80,6 +80,7 @@ Taken from the brief (`docs/BRIEF.md`) and binding for the implementation:
 - Earned premium: the full annual premium of each policy term, in DKK, no pro-rata.
 - Loss ratio: incurred loss divided by earned premium.
 - Underwriting year: the calendar year of the policy's inception date.
+- Claim count: every claim made against the group's policies, including declined and withdrawn ones, which cost nothing. Policy count counts policy terms, so a renewed policy counts once per term.
 - Currency: each amount is converted with its own currency, the premium at the rate of the inception month and the claim at the rate of the loss month. A missing rate excludes the row and is counted.
 
 ## Data quality

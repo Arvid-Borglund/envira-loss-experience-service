@@ -40,7 +40,7 @@
 <body>
 <main>
   <h1>Loss experience</h1>
-  <p class="lead">Loss ratio = incurred loss / earned premium. Incurred loss is what was paid for settled claims and paid plus reserve for open ones; withdrawn and declined claims cost nothing. Earned premium is the full annual premium. All figures in DKK.</p>
+  <p class="lead">Loss ratio = incurred loss / earned premium. Incurred loss is what was paid for settled claims and paid plus reserve for open ones; withdrawn and declined claims cost nothing. Earned premium is the full annual premium. Claim counts include declined and withdrawn claims. All figures in DKK. The filters apply to both tables.</p>
   <div id="error" class="error" role="alert" hidden></div>
   <section class="card">
     <h2>All portfolios</h2>
@@ -112,11 +112,21 @@
     for (const [k, el] of Object.entries(controls)) el.value ? url.searchParams.set(k, el.value) : url.searchParams.delete(k);
     history.replaceState(null, "", url);
   }
+  // The same filters go to both endpoints, so the ranking and the peril table always describe the same slice.
+  function withFilters(path) {
+    const q = new URLSearchParams();
+    for (const k of FILTERS) if (controls[k].value) q.set(k, controls[k].value);
+    const qs = q.toString();
+    return path + (qs ? "?" + qs : "");
+  }
 
   function renderRanking(data) {
-    $("ranking-note").textContent = data.ranking || "";
+    const filtered = FILTERS.some((k) => controls[k].value);
+    $("ranking-note").textContent = (data.ranking || "") + (filtered ? "; filters applied" : "");
     const body = $("ranking").tBodies[0];
     body.textContent = "";
+    const current = controls.portfolio.value;
+    controls.portfolio.textContent = "";
     for (const [i, p] of data.portfolios.entries()) {
       controls.portfolio.add(new Option(p.portfolio_id + "  (loss ratio " + ratio(p.loss_ratio) + ")", p.portfolio_id));
       const wp = p.worst_peril ? p.worst_peril.peril + " (" + ratio(p.worst_peril.loss_ratio) + ")" : "n/a";
@@ -125,6 +135,8 @@
       row.addEventListener("click", () => { setSelect(controls.portfolio, p.portfolio_id); loadPortfolio(); });
       body.appendChild(row);
     }
+    if (current) setSelect(controls.portfolio, current);
+    if (!data.portfolios.length) body.appendChild(tr(["No portfolio has policies under these filters.", "", "", "", "", "", ""]));
   }
 
   function renderPerils(data) {
@@ -138,20 +150,27 @@
     $("perils-wrap").hidden = false;
   }
 
+  async function loadRanking() {
+    try {
+      renderRanking(await getJson(withFilters("/portfolios/loss-experience")));
+      clearError();
+    } catch (e) { showError(e.message); }
+  }
+
   async function loadPortfolio() {
     syncUrl();
     const id = controls.portfolio.value;
     if (!id) return;
-    const q = new URLSearchParams();
-    for (const k of FILTERS) if (controls[k].value) q.set(k, controls[k].value);
     try {
-      renderPerils(await getJson("/portfolios/" + encodeURIComponent(id) + "/loss-experience" + (q.size ? "?" + q : "")));
+      renderPerils(await getJson(withFilters("/portfolios/" + encodeURIComponent(id) + "/loss-experience")));
       clearError();
     } catch (e) {
       $("perils-wrap").hidden = true;
       showError(e.message);
     }
   }
+
+  async function refresh() { await loadRanking(); await loadPortfolio(); }
 
   async function loadQuality() {
     const box = $("quality-body");
@@ -172,14 +191,14 @@
     } catch (e) { showError(e.message); }
   }
 
-  for (const el of Object.values(controls)) el.addEventListener("change", loadPortfolio);
+  controls.portfolio.addEventListener("change", loadPortfolio);
+  for (const k of FILTERS) controls[k].addEventListener("change", refresh);
   $("quality").addEventListener("toggle", () => { if ($("quality").open) loadQuality(); });
 
   (async function init() {
     const params = new URLSearchParams(location.search);
     for (const k of FILTERS) if (params.get(k)) setSelect(controls[k], params.get(k));
-    try { renderRanking(await getJson("/portfolios/loss-experience")); }
-    catch (e) { showError(e.message); }
+    await loadRanking();
     const wanted = params.get("portfolio") || (controls.portfolio.options[0] ? controls.portfolio.options[0].value : "");
     if (wanted) { setSelect(controls.portfolio, wanted); loadPortfolio(); }
   })();

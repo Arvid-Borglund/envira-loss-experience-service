@@ -211,10 +211,12 @@ def clean_claims(raw: pd.DataFrame, policies: pd.DataFrame, rates: pd.DataFrame)
     # 11. dates in either format
     day_first = _day_first_count(df["loss_date"]) + _day_first_count(df["reported_date"])
     df = df.assign(loss_date=parse_dates(df["loss_date"]), reported_date=parse_dates(df["reported_date"]))
-    df = df[df["loss_date"].notna() & df["reported_date"].notna()]
+    unreported = int(df["reported_date"].isna().sum())
+    df = df[df["loss_date"].notna()]
     quality.append(_entry(
         "claims_unparseable_date", "claims", before - len(df), "excluded",
-        f"loss_date or reported_date in neither YYYY-MM-DD nor DD-MM-YYYY; {day_first} values were day-first.",
+        f"loss_date in neither YYYY-MM-DD nor DD-MM-YYYY; {day_first} values were day-first. "
+        f"reported_date feeds no figure, so {unreported} unparseable reported dates were kept as missing.",
     ))
     before = len(df)
 
