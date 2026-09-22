@@ -1,0 +1,12 @@
+# Source data is not committed (the brief asks for this); unzip it to data/
+data/
+# The assessment criteria were sent to the candidate, kept local
+docs/SCORING.md
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env
+.claude/
